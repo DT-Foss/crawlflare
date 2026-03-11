@@ -575,8 +575,9 @@ a:hover { text-decoration: underline; }
     <div class="title">terminal</div>
   </div>
   <div class="code-body">
-    <span class="comment"># Download the binary (Linux amd64)</span><br>
-    <span class="cmd">$</span> wget <span class="url">https://crawlflare.de/dl/crawlflare</span> && chmod +x crawlflare<br>
+    <span class="comment"># Clone and build</span><br>
+    <span class="cmd">$</span> git clone <span class="url">https://github.com/DT-Foss/crawlflare.git</span><br>
+    <span class="cmd">$</span> cd crawlflare && go build <span class="flag">-o</span> crawlflare <span class="url">./cmd/crawlflare/</span><br>
     <br>
     <span class="comment"># Point it at your web server</span><br>
     <span class="cmd">$</span> ./crawlflare <span class="flag">-origin</span> <span class="url">http://localhost:3000</span> <span class="flag">-salt</span> "my-secret"<br>
@@ -600,8 +601,8 @@ a:hover { text-decoration: underline; }
 
 <!-- Footer -->
 <footer class="footer">
-  <p>Built in Görlitz, Germany by <a href="mailto:david@foss.com.de">David Tom Foss</a>. Not affiliated with Cloudflare, Inc.</p>
-  <p style="margin-top:0.5rem;">© 2026 crawlflare.de — <a href="mailto:david@foss.com.de">david@foss.com.de</a></p>
+  <p>Built in Görlitz, Germany by <a href="mailto:dtfoss-dev@proton.me">David Tom Foss</a>. Not affiliated with Cloudflare, Inc.</p>
+  <p style="margin-top:0.5rem;">© 2026 crawlflare.de — <a href="mailto:dtfoss-dev@proton.me">dtfoss-dev@proton.me</a></p>
 </footer>
 
 <script>
