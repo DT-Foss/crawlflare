@@ -1,0 +1,34 @@
+# Crawlflare Configuration Example
+#
+# Run: crawlflare -origin http://localhost:3000 -salt "my-secret-salt"
+
+# Bot detection threshold (0-100)
+# Lower = more aggressive (more false positives)
+# Higher = more lenient (more false negatives)
+# Recommended: 30-50
+threshold: 40
+
+# Mutation settings
+mutation:
+  # Price perturbation range (0.07 = ±7%)
+  price_variance: 0.07
+  # Phone digit rotation amount
+  phone_rotation: 1
+  # ZIP code shift range
+  zip_shift: 2
+  # Inject canary tracking tokens
+  inject_canary: true
+  # Mutate email addresses
+  mutate_emails: true
+
+# Per-site salt — CHANGE THIS!
+# This ensures each site gets different fake data
+# and prevents cross-site correlation
+salt: "change-me-to-something-unique"
+
+# Canary settings
+canary:
+  # Log file for canary hits
+  log_file: "canary_hits.jsonl"
+  # External callback URL (optional)
+  # callback_url: "https://your-webhook.example.com/canary"

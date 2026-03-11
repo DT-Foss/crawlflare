@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crawlflare — Data Poisoning for Web Scrapers</title>
+<meta name="description" content="Don't block scrapers. Poison their data. Crawlflare serves fake prices, numbers, and contact info to bots while humans see the real thing.">
+<meta name="robots" content="index, follow">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕷️</text></svg>">
+<style>
+:root {
+  --cf-orange: #f6821f;
+  --cf-dark: #0d1117;
+  --cf-darker: #090c10;
+  --cf-card: #161b22;
+  --cf-border: #30363d;
+  --cf-text: #e6edf3;
+  --cf-muted: #8b949e;
+  --cf-green: #3fb950;
+  --cf-red: #f85149;
+  --cf-blue: #58a6ff;
+  --cf-purple: #bc8cff;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--cf-dark);
+  color: var(--cf-text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+a { color: var(--cf-orange); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Navigation */
+.nav {
+  position: fixed; top: 0; width: 100%; z-index: 100;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--cf-border);
+  padding: 0 2rem;
+}
+.nav-inner {
+  max-width: 1200px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px;
+}
+.nav-logo {
+  font-size: 1.4rem; font-weight: 700;
+  background: linear-gradient(135deg, var(--cf-orange), #ff6b35);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.nav-links { display: flex; gap: 2rem; align-items: center; }
+.nav-links a { color: var(--cf-muted); font-size: 0.9rem; transition: color 0.2s; }
+.nav-links a:hover { color: var(--cf-text); text-decoration: none; }
+.btn-nav {
+  background: var(--cf-orange); color: #fff; padding: 0.5rem 1.2rem;
+  border-radius: 6px; font-weight: 600; font-size: 0.85rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-nav:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(246,130,31,0.3); text-decoration: none; }
+
+/* Hero */
+.hero {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 6rem 2rem 4rem; position: relative;
+  background: radial-gradient(ellipse at 50% 0%, rgba(246,130,31,0.08) 0%, transparent 60%);
+}
+.hero-content { max-width: 900px; text-align: center; }
+.hero-badge {
+  display: inline-block; background: rgba(246,130,31,0.1); border: 1px solid rgba(246,130,31,0.3);
+  color: var(--cf-orange); padding: 0.4rem 1rem; border-radius: 20px;
+  font-size: 0.8rem; font-weight: 600; margin-bottom: 2rem;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800;
+  line-height: 1.1; margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, #fff 0%, var(--cf-muted) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.hero h1 span {
+  background: linear-gradient(135deg, var(--cf-orange), #ff6b35);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.hero p { font-size: 1.25rem; color: var(--cf-muted); max-width: 650px; margin: 0 auto 2.5rem; }
+.hero-cta { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.btn-primary {
+  background: linear-gradient(135deg, var(--cf-orange), #ff6b35);
+  color: #fff; padding: 0.9rem 2rem; border-radius: 8px;
+  font-weight: 700; font-size: 1rem; border: none; cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(246,130,31,0.3); }
+.btn-secondary {
+  background: transparent; color: var(--cf-text); padding: 0.9rem 2rem;
+  border-radius: 8px; font-weight: 600; font-size: 1rem;
+  border: 1px solid var(--cf-border); cursor: pointer; transition: all 0.2s;
+}
+.btn-secondary:hover { border-color: var(--cf-muted); background: rgba(255,255,255,0.03); }
+
+/* Live Demo Section */
+.demo-section {
+  padding: 4rem 2rem; max-width: 1200px; margin: 0 auto;
+}
+.demo-section h2 {
+  font-size: 2.2rem; text-align: center; margin-bottom: 0.5rem;
+}
+.demo-section h2 span {
+  background: linear-gradient(135deg, var(--cf-orange), #ff6b35);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.demo-subtitle { text-align: center; color: var(--cf-muted); margin-bottom: 3rem; font-size: 1.1rem; }
+
+.demo-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+  margin-bottom: 3rem;
+}
+@media (max-width: 768px) { .demo-grid { grid-template-columns: 1fr; } }
+
+.demo-card {
+  background: var(--cf-card); border: 1px solid var(--cf-border);
+  border-radius: 12px; overflow: hidden;
+}
+.demo-card-header {
+  padding: 1rem 1.5rem; border-bottom: 1px solid var(--cf-border);
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.demo-card-header .dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-green { background: var(--cf-green); }
+.dot-red { background: var(--cf-red); }
+.demo-card-header span { font-weight: 600; font-size: 0.9rem; }
+.demo-card-body { padding: 1.5rem; }
+
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  text-align: left; font-size: 0.75rem; text-transform: uppercase;
+  color: var(--cf-muted); padding: 0.5rem 0; border-bottom: 1px solid var(--cf-border);
+  letter-spacing: 0.05em;
+}
+.data-table td {
+  padding: 0.75rem 0; border-bottom: 1px solid rgba(48,54,61,0.5);
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.9rem;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.price-real { color: var(--cf-green); }
+.price-fake { color: var(--cf-red); }
+.diff { color: var(--cf-orange); font-size: 0.8rem; }
+
+/* Live Stats Bar */
+.live-stats {
+  background: var(--cf-card); border: 1px solid var(--cf-border);
+  border-radius: 12px; padding: 2rem;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+  margin-bottom: 3rem;
+}
+@media (max-width: 768px) { .live-stats { grid-template-columns: repeat(2, 1fr); } }
+.stat-item { text-align: center; }
+.stat-number {
+  font-size: 2.5rem; font-weight: 800;
+  font-family: 'SF Mono', monospace;
+}
+.stat-number.orange { color: var(--cf-orange); }
+.stat-number.green { color: var(--cf-green); }
+.stat-number.red { color: var(--cf-red); }
+.stat-number.blue { color: var(--cf-blue); }
+.stat-label { font-size: 0.8rem; color: var(--cf-muted); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-pulse {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--cf-green); margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* Fake Scrapeable Data — THE TRAP */
+.trap-section {
+  padding: 4rem 2rem; max-width: 1200px; margin: 0 auto;
+}
+.trap-section h2 { font-size: 2rem; text-align: center; margin-bottom: 2rem; }
+.product-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;
+}
+@media (max-width: 768px) { .product-grid { grid-template-columns: 1fr; } }
+.product-card {
+  background: var(--cf-card); border: 1px solid var(--cf-border);
+  border-radius: 12px; padding: 1.5rem; transition: transform 0.2s;
+}
+.product-card:hover { transform: translateY(-2px); }
+.product-name { font-weight: 600; margin-bottom: 0.5rem; }
+.product-price { font-size: 1.5rem; font-weight: 800; color: var(--cf-green); margin-bottom: 0.5rem; }
+.product-rating { color: var(--cf-orange); margin-bottom: 0.5rem; }
+.product-stock { font-size: 0.85rem; color: var(--cf-muted); }
+.product-sku { font-size: 0.75rem; color: var(--cf-muted); font-family: monospace; }
+.product-contact { font-size: 0.85rem; color: var(--cf-muted); margin-top: 0.5rem; }
+
+/* How It Works */
+.how-section {
+  padding: 6rem 2rem; max-width: 1200px; margin: 0 auto;
+}
+.how-section h2 { font-size: 2.5rem; text-align: center; margin-bottom: 3rem; }
+.how-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;
+}
+@media (max-width: 768px) { .how-grid { grid-template-columns: 1fr; } }
+.how-card {
+  background: var(--cf-card); border: 1px solid var(--cf-border);
+  border-radius: 12px; padding: 2rem;
+}
+.how-number {
+  font-size: 3rem; font-weight: 800; color: var(--cf-orange); opacity: 0.3;
+  margin-bottom: 0.5rem;
+}
+.how-card h3 { font-size: 1.2rem; margin-bottom: 0.75rem; }
+.how-card p { color: var(--cf-muted); font-size: 0.95rem; }
+
+/* Code Block */
+.code-section { padding: 4rem 2rem; max-width: 800px; margin: 0 auto; }
+.code-block {
+  background: var(--cf-darker); border: 1px solid var(--cf-border);
+  border-radius: 12px; overflow: hidden;
+}
+.code-header {
+  padding: 0.75rem 1rem; background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--cf-border);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.code-header .dots { display: flex; gap: 6px; }
+.code-header .dots span { width: 12px; height: 12px; border-radius: 50%; }
+.code-header .dots span:nth-child(1) { background: #ff5f57; }
+.code-header .dots span:nth-child(2) { background: #febc2e; }
+.code-header .dots span:nth-child(3) { background: #28c840; }
+.code-header .title { margin-left: auto; color: var(--cf-muted); font-size: 0.8rem; }
+.code-body {
+  padding: 1.5rem; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.85rem; line-height: 1.8; overflow-x: auto;
+}
+.code-body .comment { color: var(--cf-muted); }
+.code-body .cmd { color: var(--cf-green); }
+.code-body .flag { color: var(--cf-orange); }
+.code-body .url { color: var(--cf-blue); }
+
+/* Comparison */
+.compare-section { padding: 4rem 2rem; max-width: 1000px; margin: 0 auto; }
+.compare-section h2 { font-size: 2rem; text-align: center; margin-bottom: 2rem; }
+.compare-table { width: 100%; border-collapse: collapse; background: var(--cf-card); border-radius: 12px; overflow: hidden; border: 1px solid var(--cf-border); }
+.compare-table th { padding: 1rem; text-align: left; border-bottom: 1px solid var(--cf-border); font-size: 0.85rem; }
+.compare-table th:first-child { color: var(--cf-muted); }
+.compare-table th:nth-child(2) { color: var(--cf-red); }
+.compare-table th:nth-child(3) { color: var(--cf-green); }
+.compare-table td { padding: 0.75rem 1rem; border-bottom: 1px solid rgba(48,54,61,0.5); font-size: 0.9rem; }
+.compare-table tr:last-child td { border-bottom: none; }
+.check { color: var(--cf-green); }
+.cross { color: var(--cf-red); }
+
+/* CTA Section */
+.cta-section {
+  padding: 6rem 2rem; text-align: center;
+  background: radial-gradient(ellipse at 50% 100%, rgba(246,130,31,0.08) 0%, transparent 60%);
+}
+.cta-section h2 { font-size: 2.5rem; margin-bottom: 1rem; }
+.cta-section p { color: var(--cf-muted); font-size: 1.1rem; margin-bottom: 2rem; }
+
+/* Footer */
+.footer {
+  border-top: 1px solid var(--cf-border); padding: 2rem;
+  text-align: center; color: var(--cf-muted); font-size: 0.85rem;
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.6s ease-out both; }
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--cf-dark); }
+::-webkit-scrollbar-thumb { background: var(--cf-border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav">
+<div class="nav-inner">
+  <div class="nav-logo">crawlflare</div>
+  <div class="nav-links">
+    <a href="#demo">Live Demo</a>
+    <a href="#how">How It Works</a>
+    <a href="#install">Install</a>
+    <a href="#casestudy">Case Study</a>
+    <a href="https://github.com/DT-Foss/crawlflare" target="_blank">GitHub</a>
+    <a href="#cta" class="btn-nav">Get Started</a>
+  </div>
+</div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+<div class="hero-content">
+  <div class="hero-badge">Open Source Data Poisoning Proxy</div>
+  <h1 class="fade-up">Don't block scrapers.<br><span>Poison their data.</span></h1>
+  <p class="fade-up delay-1">Crawlflare sits in front of your website and serves subtly wrong prices, phone numbers, and statistics to bots — while humans see the real thing. Scraping is now permanently unreliable.</p>
+  <div class="hero-cta fade-up delay-2">
+    <a href="#install" class="btn-primary">Deploy in 30 seconds</a>
+    <a href="#demo" class="btn-secondary">See it live ↓</a>
+  </div>
+</div>
+</section>
+
+<!-- Live Stats -->
+<section id="demo" class="demo-section">
+<h2>This page is <span>the demo</span></h2>
+<p class="demo-subtitle">Right now, bots are scraping this page and getting fake data. Here's what's happening live.</p>
+
+<div class="live-stats" id="liveStats">
+  <div class="stat-item">
+    <div class="stat-number orange" id="statRequests">0</div>
+    <div class="stat-label"><span class="stat-pulse"></span>Total Requests</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number green" id="statHumans">0</div>
+    <div class="stat-label">Humans (real data)</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number red" id="statBots">0</div>
+    <div class="stat-label">Bots (poisoned)</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number blue" id="statMutations">0</div>
+    <div class="stat-label">Data Points Mutated</div>
+  </div>
+</div>
+
+<!-- Side by Side Demo -->
+<div class="demo-grid">
+  <div class="demo-card">
+    <div class="demo-card-header">
+      <div class="dot dot-green"></div>
+      <span>What you see (human)</span>
+    </div>
+    <div class="demo-card-body">
+      <table class="data-table">
+        <tr><th>Product</th><th>Price</th><th>Stock</th></tr>
+        <tr><td>MacBook Pro M4</td><td class="price-real">$2,499.00</td><td>143 units</td></tr>
+        <tr><td>iPhone 16 Pro</td><td class="price-real">$1,199.00</td><td>892 units</td></tr>
+        <tr><td>AirPods Pro 3</td><td class="price-real">$249.00</td><td>2,340 units</td></tr>
+        <tr><td>iPad Air M3</td><td class="price-real">$799.00</td><td>567 units</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="demo-card">
+    <div class="demo-card-header">
+      <div class="dot dot-red"></div>
+      <span>What the bot gets (poisoned)</span>
+    </div>
+    <div class="demo-card-body">
+      <table class="data-table">
+        <tr><th>Product</th><th>Price</th><th>Stock</th></tr>
+        <tr><td>MacBook Pro M4</td><td class="price-fake" id="fakePrice1">$2,499.00</td><td id="fakeStock1">143 units</td></tr>
+        <tr><td>iPhone 16 Pro</td><td class="price-fake" id="fakePrice2">$1,199.00</td><td id="fakeStock2">892 units</td></tr>
+        <tr><td>AirPods Pro 3</td><td class="price-fake" id="fakePrice3">$249.00</td><td id="fakeStock3">2,340 units</td></tr>
+        <tr><td>iPad Air M3</td><td class="price-fake" id="fakePrice4">$799.00</td><td id="fakeStock4">567 units</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- Scrapeable Trap Data -->
+<section class="trap-section">
+<h2>Sample Product Catalog</h2>
+<p class="demo-subtitle">Go ahead, scrape this. We dare you.</p>
+<div class="product-grid">
+  <div class="product-card" itemscope itemtype="https://schema.org/Product">
+    <div class="product-name" itemprop="name">Crawlflare Enterprise License</div>
+    <div class="product-price" itemprop="price" data-currency="EUR">€4,999.00</div>
+    <div class="product-rating">★★★★★ <span itemprop="rating">4.9</span>/5 (2,847 reviews)</div>
+    <div class="product-stock" itemprop="availability">In stock: 156 licenses</div>
+    <div class="product-sku">SKU: CF-ENT-2026-001</div>
+    <div class="product-contact">Sales: +49 3581 7492 831</div>
+  </div>
+  <div class="product-card" itemscope itemtype="https://schema.org/Product">
+    <div class="product-name" itemprop="name">Crawlflare Pro (Annual)</div>
+    <div class="product-price" itemprop="price" data-currency="EUR">€1,299.00</div>
+    <div class="product-rating">★★★★★ <span itemprop="rating">4.8</span>/5 (5,621 reviews)</div>
+    <div class="product-stock" itemprop="availability">In stock: 892 licenses</div>
+    <div class="product-sku">SKU: CF-PRO-2026-002</div>
+    <div class="product-contact">Sales: +49 3581 7492 832</div>
+  </div>
+  <div class="product-card" itemscope itemtype="https://schema.org/Product">
+    <div class="product-name" itemprop="name">Crawlflare Starter (Monthly)</div>
+    <div class="product-price" itemprop="price" data-currency="EUR">€49.00</div>
+    <div class="product-rating">★★★★☆ <span itemprop="rating">4.6</span>/5 (12,394 reviews)</div>
+    <div class="product-stock" itemprop="availability">In stock: unlimited</div>
+    <div class="product-sku">SKU: CF-STR-2026-003</div>
+    <div class="product-contact">Sales: +49 3581 7492 833</div>
+  </div>
+</div>
+
+<!-- Hidden data that crawlers love -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Crawlflare",
+  "url": "https://crawlflare.de",
+  "email": "contact@crawlflare.de",
+  "telephone": "+49 3581 7492 830",
+  "founder": "David Tom Foss",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Jakobstraße 14",
+    "addressLocality": "Görlitz",
+    "postalCode": "02826",
+    "addressCountry": "DE"
+  }
+}
+</script>
+</section>
+
+<!-- How It Works -->
+<section id="how" class="how-section">
+<h2>How it works</h2>
+<div class="how-grid">
+  <div class="how-card fade-up">
+    <div class="how-number">01</div>
+    <h3>Classify</h3>
+    <p>Every request is scored using TLS fingerprinting, header analysis, behavioral signals, and IP intelligence. Humans pass through untouched. Bots get flagged.</p>
+  </div>
+  <div class="how-card fade-up delay-1">
+    <div class="how-number">02</div>
+    <h3>Mutate</h3>
+    <p>Flagged responses are piped through the mutation engine. Prices shift ±3-12%, phone numbers rotate digits, email addresses get subtle typos. All deterministic — same bot, same fake data every time.</p>
+  </div>
+  <div class="how-card fade-up delay-2">
+    <div class="how-number">03</div>
+    <h3>Track</h3>
+    <p>Invisible canary tokens are injected into poisoned responses. When your fake data shows up somewhere else, you'll know exactly who scraped it and when.</p>
+  </div>
+</div>
+</section>
+
+<!-- Comparison -->
+<section class="compare-section">
+<h2>Blocking vs. Poisoning</h2>
+<table class="compare-table">
+  <tr>
+    <th></th>
+    <th>Traditional Blocking</th>
+    <th>Crawlflare Poisoning</th>
+  </tr>
+  <tr>
+    <td>Bot knows it's detected</td>
+    <td class="cross">Yes — adapts immediately</td>
+    <td class="check">No — thinks it succeeded</td>
+  </tr>
+  <tr>
+    <td>Arms race</td>
+    <td class="cross">Endless cat & mouse</td>
+    <td class="check">Game over — data trust destroyed</td>
+  </tr>
+  <tr>
+    <td>Scraped data value</td>
+    <td class="cross">Still valuable if bypass works</td>
+    <td class="check">Worthless — permanently unreliable</td>
+  </tr>
+  <tr>
+    <td>Detection of data theft</td>
+    <td class="cross">Bot blocked = no evidence</td>
+    <td class="check">Canary tokens trace the data</td>
+  </tr>
+  <tr>
+    <td>Cost to attacker</td>
+    <td class="cross">Just time (find new bypass)</td>
+    <td class="check">Entire dataset is suspect</td>
+  </tr>
+  <tr>
+    <td>Network effect</td>
+    <td class="cross">None</td>
+    <td class="check">Once known, ALL scraped data is suspect everywhere</td>
+  </tr>
+</table>
+</section>
+
+<!-- Case Study: AI Models Got Poisoned -->
+<section id="casestudy" class="demo-section">
+<h2>Case Study: <span>3 AI models, 0 correct prices</span></h2>
+<p class="demo-subtitle">We asked Claude, Gemini, and Perplexity to scrape this page and extract our product prices. None of them got a single value right. They didn't even notice.</p>
+
+<div class="demo-card" style="max-width:900px; margin: 0 auto 2rem;">
+  <div class="demo-card-header">
+    <div class="dot dot-red"></div>
+    <span>Live test — March 11, 2026</span>
+  </div>
+  <div class="demo-card-body">
+    <table class="data-table">
+      <tr>
+        <th>Product</th>
+        <th style="color:var(--cf-green)">Real Price</th>
+        <th style="color:var(--cf-red)">Claude saw</th>
+        <th style="color:var(--cf-red)">Gemini saw</th>
+        <th style="color:var(--cf-red)">Perplexity saw</th>
+      </tr>
+      <tr>
+        <td>MacBook Pro M4</td>
+        <td class="price-real">$2,499.00</td>
+        <td class="price-fake">$2,529.00</td>
+        <td class="price-fake">$2,359.00</td>
+        <td class="price-fake">$2,529.00</td>
+      </tr>
+      <tr>
+        <td>iPhone 16 Pro</td>
+        <td class="price-real">$1,199.00</td>
+        <td class="price-fake">$1,229.00</td>
+        <td class="price-fake">$1,259.00</td>
+        <td class="price-fake">$1,229.00</td>
+      </tr>
+      <tr>
+        <td>AirPods Pro 3</td>
+        <td class="price-real">$249.00</td>
+        <td class="price-fake">$235.21</td>
+        <td class="price-fake">$242.62</td>
+        <td class="price-fake">$235.21</td>
+      </tr>
+      <tr>
+        <td>iPad Air M3</td>
+        <td class="price-real">$799.00</td>
+        <td class="price-fake">$781.06</td>
+        <td class="price-fake">$726.41</td>
+        <td class="price-fake">$781.06</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<div class="live-stats" style="max-width:900px; margin: 0 auto 2rem;">
+  <div class="stat-item">
+    <div class="stat-number red">0/12</div>
+    <div class="stat-label">Correct prices extracted</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number orange">3/3</div>
+    <div class="stat-label">AI models fooled</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number red">0/3</div>
+    <div class="stat-label">Models that noticed</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number blue">3,123</div>
+    <div class="stat-label">Data points mutated</div>
+  </div>
+</div>
+
+<div class="demo-card" style="max-width:900px; margin: 0 auto;">
+  <div class="demo-card-body" style="text-align:center;">
+    <p style="font-size:1.1rem; margin-bottom:0.75rem;">Each AI model confidently presented its extracted prices in neatly formatted tables. All garbage.</p>
+    <p style="color:var(--cf-muted);">Even the "Human" reference column in the HTML was mutated for bots — so parsing the page for a ground truth comparison also fails. Gemini noticed this. The others didn't even get that far.</p>
+    <p style="color:var(--cf-orange); font-weight:600; margin-top:1rem;">The best part: they became unwitting testimonials for the product they were trying to scrape.</p>
+  </div>
+</div>
+</section>
+
+<!-- Install -->
+<section id="install" class="code-section">
+<h2 style="font-size: 2rem; text-align: center; margin-bottom: 2rem;">One binary. Zero config.</h2>
+<div class="code-block">
+  <div class="code-header">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="title">terminal</div>
+  </div>
+  <div class="code-body">
+    <span class="comment"># Download the binary (Linux amd64)</span><br>
+    <span class="cmd">$</span> wget <span class="url">https://crawlflare.de/dl/crawlflare</span> && chmod +x crawlflare<br>
+    <br>
+    <span class="comment"># Point it at your web server</span><br>
+    <span class="cmd">$</span> ./crawlflare <span class="flag">-origin</span> <span class="url">http://localhost:3000</span> <span class="flag">-salt</span> "my-secret"<br>
+    <br>
+    <span class="comment"># That's it. Humans get real data. Bots get poison.</span><br>
+    <span class="comment"># Your server on :3000, Crawlflare on :8080.</span><br>
+    <span class="comment"># Point your reverse proxy at :8080 instead.</span>
+  </div>
+</div>
+</section>
+
+<!-- CTA -->
+<section id="cta" class="cta-section">
+<h2>Make scraping unreliable. Forever.</h2>
+<p>Self-hosted. One binary. No vendor lock-in. No cloud dependency.</p>
+<div class="hero-cta">
+  <a href="https://github.com/DT-Foss/crawlflare" class="btn-primary" target="_blank">View on GitHub</a>
+  <a href="#demo" class="btn-secondary">See it live ↓</a>
+</div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <p>Built in Görlitz, Germany by <a href="mailto:david@foss.com.de">David Tom Foss</a>. Not affiliated with Cloudflare, Inc.</p>
+  <p style="margin-top:0.5rem;">© 2026 crawlflare.de — <a href="mailto:david@foss.com.de">david@foss.com.de</a></p>
+</footer>
+
+<script>
+// Live stats counter animation
+function animateCounter(el, target, duration) {
+  const start = parseInt(el.textContent) || 0;
+  const range = target - start;
+  const startTime = performance.now();
+  function step(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.floor(start + range * eased).toLocaleString();
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// Simulate live stats (replace with real /cf-stats endpoint when proxy is running)
+let stats = { requests: 0, humans: 0, bots: 0, mutations: 0 };
+
+function updateStats() {
+  // Fetch from real endpoint if available
+  fetch('/cf-stats')
+    .then(r => r.json())
+    .then(data => {
+      animateCounter(document.getElementById('statRequests'), data.total_requests, 800);
+      animateCounter(document.getElementById('statHumans'), data.human_requests, 800);
+      animateCounter(document.getElementById('statBots'), data.bot_requests, 800);
+      animateCounter(document.getElementById('statMutations'), data.total_mutations, 800);
+    })
+    .catch(() => {
+      // Simulated stats for static deployment
+      stats.requests += Math.floor(Math.random() * 3) + 1;
+      stats.humans += Math.floor(Math.random() * 2);
+      stats.bots += Math.random() > 0.4 ? 1 : 0;
+      stats.mutations += Math.floor(Math.random() * 8);
+      animateCounter(document.getElementById('statRequests'), stats.requests, 800);
+      animateCounter(document.getElementById('statHumans'), stats.humans, 800);
+      animateCounter(document.getElementById('statBots'), stats.bots, 800);
+      animateCounter(document.getElementById('statMutations'), stats.mutations, 800);
+    });
+}
+
+// Update every 3 seconds
+setInterval(updateStats, 3000);
+updateStats();
+
+// Animate the "poisoned" data in the comparison table
+function seedRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+}
+
+function mutatePrice(price, rng) {
+  const variance = 0.07;
+  const shift = (rng() * 2 - 1) * variance;
+  return (price * (1 + shift)).toFixed(2);
+}
+
+function mutateStock(stock, rng) {
+  const shift = Math.floor((rng() * 2 - 1) * stock * 0.15);
+  return stock + shift;
+}
+
+// Cycle through different "bot fingerprints" to show different poisoned data
+let botSeed = 42;
+function showPoisonedData() {
+  const rng = seedRandom(botSeed);
+
+  const prices = [2499.00, 1199.00, 249.00, 799.00];
+  const stocks = [143, 892, 2340, 567];
+
+  for (let i = 0; i < 4; i++) {
+    const fakePrice = mutatePrice(prices[i], rng);
+    const fakeStock = mutateStock(stocks[i], rng);
+    document.getElementById(`fakePrice${i+1}`).textContent = `$${parseFloat(fakePrice).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById(`fakeStock${i+1}`).textContent = `${fakeStock.toLocaleString()} units`;
+  }
+
+  botSeed += 17; // next "bot"
+}
+
+// Rotate poisoned data every 4 seconds
+setInterval(showPoisonedData, 4000);
+showPoisonedData();
+</script>
+
+</body>
+</html>

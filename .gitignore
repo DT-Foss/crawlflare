@@ -1,0 +1,25 @@
+# Binaries
+crawlflare
+crawlflare-web
+crawlflare-web-linux
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+test_integration.go
+canary_hits.jsonl
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
