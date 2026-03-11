@@ -104,9 +104,3 @@ curl http://localhost:8080/cf-stats
 ## License
 
 MIT
-
-## Author
-
-**David Tom Foss** — [david@foss.com.de](mailto:david@foss.com.de)
-
-Built in Görlitz, Germany. Not affiliated with Cloudflare, Inc.
