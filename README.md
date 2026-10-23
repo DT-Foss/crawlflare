@@ -103,4 +103,4 @@ curl http://localhost:8080/cf-stats
 
 ## License
 
-MIT
+PolyForm Noncommercial License 1.0.0. See [LICENSE](LICENSE). Commercial licenses: Wirkung Inc. (d.foss@ieee.org).
